@@ -1,0 +1,61 @@
+import numpy as np
+from numpy.random import seed
+
+class AdalineSGD(object):
+    def __init__(self, eta=0.01, n_iter=10,
+                 shuffle=True, random_state=None):
+        self.eta = eta
+        self.n_iter = n_iter
+        self.shuffle = shuffle
+        if random_state:
+            seed(random_state)
+        self.w_initialized = False
+    
+    def fit(self, X, y):
+        self._initialize_w(X.shape[1])
+        self.avg_costs_ = []
+        
+        for _ in range(self.n_iter):
+            if self.shuffle:
+                X, y = self._shuffle(X, y)
+            costs = []
+            for xi, target in zip(X, y):
+                costs.append(self._update_w(xi, target))
+            avg_cost = sum(costs) / len(y)
+            self.avg_costs_.append(avg_cost)
+        return self
+    
+    def partial_fit(self, X, y):
+        if not self.w_initialized:
+            self._initialize_w(X.shape[1])
+            
+        if y.ravel().shape[0] > 1:
+            for xi, target in zip(X, y):
+                self._update_w(xi, target)
+        else:
+            self._update_w(X, y)
+        return self
+    
+    def _initialize_w(self, n):
+        self.w_ = np.zeros(n + 1)
+        self.w_initialized = True
+        
+    def _shuffle(self, X, y):
+        r = np.random.permutation(len(y))
+        return X[r], y[r]
+    
+    def _update_w(self, xi, target):
+        error = target - self.net_input(xi)
+        self.w_[1:] += self.eta * xi.dot(error)
+        self.w_[0]  += self.eta * error
+        cost = error**2 / 2.0
+        return cost
+    
+    def net_input(self, X):
+        return np.dot(X, self.w_[1:]) + self.w_[0]
+    
+    def activation(self, X):
+        return self.net_input(X)
+    
+    def predict(self, X):
+        return np.where(self.activation(X) >= 0.0, 1, -1)
